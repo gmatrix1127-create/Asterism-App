@@ -1,0 +1,14 @@
+{
+  "appId": "com.asterism.app",
+  "appName": "符星",
+  "webDir": "www",
+  "android": {
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "disable",
+      "style": "DEFAULT"
+    }
+  }
+}
