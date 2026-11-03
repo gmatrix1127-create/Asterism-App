@@ -4,6 +4,7 @@ import { icons } from './icons.js';
 import { anim, EASE, handleBack, toast } from './ui.js';
 import { applyTheme } from './theme.js';
 import { onBack, onPause, exitApp, splashDone } from './native.js';
+import { settleRoot } from './editor.js';
 import * as novel from './views/novel.js';
 import * as world from './views/world.js';
 import * as notes from './views/notes.js';
@@ -32,6 +33,7 @@ function placeIndicator() {
 }
 
 function switchTab(i) {
+  settleRoot();
   if (i === current) {
     // 再点一次当前标签：回到顶部
     pages[i].scrollTo({ top: 0, behavior: 'smooth' });
@@ -88,6 +90,7 @@ async function boot() {
     toast('再按一次退出');
   });
   onPause(() => { flushAll(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) settleRoot(); });
 
   // 等启动画面开始淡出，再让卡片和 + 按钮入场
   await splashDone();

@@ -241,3 +241,80 @@ export function consumeLongPress(el) {
   if (el.dataset.longpressed) { delete el.dataset.longpressed; return true; }
   return false;
 }
+
+// ---------- 日期滚轮：年 / 月 / 日 三列，从底部弹出 ----------
+// 返回选中的时间戳（当天中午，避免时区边界问题），取消返回 null
+export function datePicker({ title = '选择日期', value = Date.now(), min = new Date(2000, 0, 1), max = new Date() } = {}) {
+  return new Promise(resolve => {
+    const ROW = 40;
+    const d0 = new Date(value);
+    const cur = { y: d0.getFullYear(), m: d0.getMonth() + 1, d: d0.getDate() };
+    const body = h(`
+      <div>
+        <div class="wheels"><div class="wheel-band"></div>
+          <div class="wheel" data-k="y"></div><div class="wheel" data-k="m"></div><div class="wheel" data-k="d"></div>
+        </div>
+        <div class="btn-row"><button class="btn" data-cancel>取消</button><button class="btn primary" data-ok>确定</button></div>
+      </div>`);
+    const cols = { y: $('[data-k=y]', body), m: $('[data-k=m]', body), d: $('[data-k=d]', body) };
+    const maxY = max.getFullYear(), maxM = max.getMonth() + 1, maxD = max.getDate();
+    const range = k => {
+      if (k === 'y') return [min.getFullYear(), maxY];
+      if (k === 'm') return [1, cur.y === maxY ? maxM : 12];
+      const days = new Date(cur.y, cur.m, 0).getDate();
+      return [1, cur.y === maxY && cur.m === maxM ? maxD : days];
+    };
+    const unit = { y: '年', m: '月', d: '日' };
+    function fill(k) {
+      const [a, b] = range(k);
+      const col = cols[k], kids = col.children;
+      // 先读这一列现在停在哪（用户可能正在滚），范围没变就不重排，免得跳回去
+      const at = kids[Math.round(col.scrollTop / ROW)];
+      if (at) cur[k] = +at.dataset.v;
+      if (kids.length && +kids[0].dataset.v === a && +kids[kids.length - 1].dataset.v === b) return;
+      cur[k] = Math.min(Math.max(cur[k], a), b);
+      cols[k].innerHTML = '';
+      for (let v = a; v <= b; v++) cols[k].appendChild(h(`<div data-v="${v}">${v}${unit[k]}</div>`));
+      cols[k].scrollTop = (cur[k] - a) * ROW;
+      mark(k);
+    }
+    function mark(k) {
+      const i = Math.round(cols[k].scrollTop / ROW);
+      Array.from(cols[k].children).forEach((el, j) => el.classList.toggle('on', j === i));
+    }
+    const timers = {};
+    for (const k of ['y', 'm', 'd']) {
+      cols[k].addEventListener('scroll', () => {
+        mark(k);
+        clearTimeout(timers[k]);
+        // 停稳以后再读数：年、月变了要重排天数
+        timers[k] = setTimeout(() => {
+          const el = cols[k].children[Math.round(cols[k].scrollTop / ROW)];
+          if (!el) return;
+          const v = +el.dataset.v;
+          if (v === cur[k]) return;
+          cur[k] = v;
+          if (k === 'y') { fill('m'); fill('d'); }
+          if (k === 'm') fill('d');
+        }, 120);
+      }, { passive: true });
+      cols[k].addEventListener('click', e => {
+        const el = e.target.closest('[data-v]');
+        if (el) cols[k].scrollTo({ top: Array.prototype.indexOf.call(cols[k].children, el) * ROW, behavior: 'smooth' });
+      });
+    }
+    let result = null;
+    const s = openSheet({ title, body, onClose: () => resolve(result) });
+    // 弹层加进页面后才能设置滚动位置
+    fill('y'); fill('m'); fill('d');
+    $('[data-cancel]', body).addEventListener('click', () => s.close());
+    $('[data-ok]', body).addEventListener('click', () => {
+      for (const k of ['y', 'm', 'd']) {
+        const el = cols[k].children[Math.round(cols[k].scrollTop / ROW)];
+        if (el) cur[k] = +el.dataset.v;
+      }
+      result = new Date(cur.y, cur.m - 1, Math.min(cur.d, new Date(cur.y, cur.m, 0).getDate()), 12).getTime();
+      s.close();
+    });
+  });
+}

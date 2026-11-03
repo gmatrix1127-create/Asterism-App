@@ -75,6 +75,51 @@ export function pickTextFile() {
   });
 }
 
+// 从相册选一张图（手机上直接打开系统相册），压缩到长边 1600 像素以内。
+// 返回 { dataUrl, ratio: 高/宽 }，取消返回 null
+export async function pickImage() {
+  if (isNative && P.Gallery) {
+    // 原生端直接打开系统相册，并在那边压缩好
+    const r = await P.Gallery.pick();
+    return r && !r.cancelled && r.dataUrl ? { dataUrl: r.dataUrl, ratio: r.ratio } : null;
+  }
+  const file = await chooseFile('image/*');
+  if (!file) return null;
+  const src = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = () => reject(fr.error);
+    fr.readAsDataURL(file);
+  });
+  return shrinkImage(src);
+}
+
+async function shrinkImage(src, max = 1600) {
+  const img = await new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error('图片读不出来'));
+    i.src = src;
+  });
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const k = Math.min(1, max / Math.max(w, h));
+  if (k === 1 && src.length < 1.6e6) return { dataUrl: src, ratio: h / w };
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * k); c.height = Math.round(h * k);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return { dataUrl: c.toDataURL('image/webp', .85), ratio: h / w };
+}
+
+function chooseFile(accept) {
+  return new Promise(resolve => {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = accept;
+    input.addEventListener('change', () => { const f = input.files && input.files[0]; input.remove(); resolve(f || null); });
+    document.body.appendChild(input);
+    input.click();
+  });
+}
+
 export async function appVersion() {
   if (!isNative || !P.App) return null;
   try { return (await P.App.getInfo()).version; } catch (e) { return null; }

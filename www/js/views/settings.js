@@ -5,7 +5,7 @@ import { openSheet, segmented, confirmDialog, toast } from '../ui.js';
 import { applyTheme } from '../theme.js';
 import { shareFile, pickTextFile, webviewVersion, appVersion } from '../native.js';
 
-export const VERSION = '1.0.4'; // 电脑预览时显示；手机上读安装包里的版本号
+export const VERSION = '1.0.9'; // 电脑预览时显示；手机上读安装包里的版本号
 
 let reloadAll = () => {};
 export const setReloadHandler = fn => { reloadAll = fn; };

@@ -56,6 +56,7 @@ public class MainActivity extends BridgeActivity {
         splash.setKeepOnScreenCondition(() -> !webReady && SystemClock.uptimeMillis() - createdAt < MAX_SPLASH_MS);
         splash.setOnExitAnimationListener(this::playSplashExit);
         registerPlugin(LaunchPlugin.class);
+        registerPlugin(GalleryPlugin.class);
         super.onCreate(savedInstanceState);
 
         Window window = getWindow();

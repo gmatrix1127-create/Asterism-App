@@ -1,24 +1,31 @@
-import { state, persist, delText } from '../store.js';
+import { state, persist, getText, delText } from '../store.js';
 import { h, esc, $, uid, fmtNum, fmtDate } from '../util.js';
 import { actionSheet, confirmDialog, toast, flip, stagger, collapse, onLongPress, consumeLongPress } from '../ui.js';
 import { pageHeader, bindScroll, emptyState } from './common.js';
 import { openEditor } from '../editor.js';
 import { openSettings } from './settings.js';
+import { imageIds, stripImages, imagesAsMarks, deleteImages } from '../rich.js';
 
-// 随记：第一行就是标题，其余是正文；不分类、不编号
+// 随记：第一行文字就是标题，其余是正文；不分类、不编号；可以插图
 export const TAB = { label: '随记', icon: 'note' };
 
 let page, list;
 
+// 标题取第一行有字的内容（图片那一行跳过）；预览里图片显示成［图片］
 function split(text) {
-  const t = text.replace(/^[\s　]+/, '');
-  const i = t.indexOf('\n');
-  const title = (i < 0 ? t : t.slice(0, i)).trim().slice(0, 60);
-  const body = i < 0 ? '' : t.slice(i + 1);
-  return { title, preview: body.replace(/^[\s　]+/, '').replace(/\n[\s　]+/g, '\n').slice(0, 140) };
+  const lines = text.split('\n');
+  const i = lines.findIndex(l => stripImages(l).replace(/[\s　]/g, ''));
+  const title = i < 0 ? '' : lines[i].trim().slice(0, 60);
+  // 只有图片没有字时，标题已经显示［图片］，预览就不再重复
+  const body = i < 0 ? '' : imagesAsMarks(lines.filter((_, j) => j !== i).join('\n'));
+  return {
+    title,
+    images: imageIds(text).length,
+    preview: body.replace(/^[\s　]+/, '').replace(/\n[\s　]+/g, '\n').replace(/\s+$/, '').slice(0, 140),
+  };
 }
-const titleOf = x => x.title || '无标题';
-const isEmpty = x => !x.title && !x.words;
+const titleOf = x => x.title || (x.images ? '［图片］' : '无标题');
+const isEmpty = x => !x.title && !x.words && !x.images;
 
 export function mount(el) {
   // 上次没写字就退出的空随记，打开时顺手清掉
@@ -106,6 +113,7 @@ async function removeNote(id, { skipAnim = false } = {}) {
   if (el) await collapse(el);
   state.notes = state.notes.filter(n => n.id !== id);
   persist('notes');
+  deleteImages(imageIds(await getText(id)));
   delText(id);
   flip(list, () => render());
   toast('已删除');
@@ -114,10 +122,11 @@ async function removeNote(id, { skipAnim = false } = {}) {
 
 // ---------- 编辑页钩子（编辑页是小说和随记共用的） ----------
 export const editorHooks = {
-  title: x => x.title || '新随记',
+  rich: true,                       // 用可插图的编辑区
+  title: x => x.title || (x.images ? '［图片］' : '新随记'),
   titleClass: '',
   badge: null,
-  countText: t => t,
+  countText: stripImages,           // 字数不算图片
   onSave: (x, text) => { Object.assign(x, split(text)); },
   placeholder: '第一行是标题',
   autoFocus: x => !x.words,
