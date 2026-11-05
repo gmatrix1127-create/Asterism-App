@@ -2,9 +2,8 @@ import { state, persist, delText, PALETTE } from '../store.js';
 import { h, esc, $, uid, rgb, fmtNum, fmtDate } from '../util.js';
 import { icons } from '../icons.js';
 import { openSheet, actionSheet, confirmDialog, toast, swatches, flip, stagger, collapse, onLongPress, consumeLongPress } from '../ui.js';
-import { pageHeader, bindScroll, emptyState, formSheet } from './common.js';
+import { pageHeader, pageActions, bindScroll, emptyState, formSheet } from './common.js';
 import { openEditor } from '../editor.js';
-import { openSettings } from './settings.js';
 
 let page, list;
 
@@ -12,12 +11,11 @@ export function mount(el) {
   page = el;
   page.innerHTML = pageHeader({
     eyebrow: 'NOVEL', title: '小说',
-    actions: [{ act: 'color', icon: 'drop', label: '章节卡片颜色' }, { act: 'settings', icon: 'settings', label: '设置' }],
   }) + '<div class="list"></div>';
   list = $('.list', page);
   bindScroll(page);
-  $('[data-act=color]', page).addEventListener('click', pickColor);
-  $('[data-act=settings]', page).addEventListener('click', openSettings);
+  const acts = pageActions(page, [{ act: 'color', icon: 'drop', label: '章节卡片颜色' }]);
+  $('[data-act=color]', acts).addEventListener('click', pickColor);
 
   list.addEventListener('click', e => {
     const card = e.target.closest('[data-id]');

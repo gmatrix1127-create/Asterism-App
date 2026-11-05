@@ -3,7 +3,6 @@ import { h, esc, $, $$, uid, rgb } from '../util.js';
 import { icons } from '../icons.js';
 import { openSheet, actionSheet, confirmDialog, toast, swatches, flip, stagger, collapse, onLongPress, consumeLongPress } from '../ui.js';
 import { pageHeader, bindScroll, emptyState, formSheet } from './common.js';
-import { openSettings } from './settings.js';
 
 let page, chipsEl, grid;
 let filter = null; // null = 全部
@@ -14,13 +13,11 @@ const colorOf = card => card.color || (typeOf(card.type) || {}).color || '#22B07
 export function mount(el) {
   page = el;
   page.innerHTML = pageHeader({
-    eyebrow: 'WORLD', title: '世界观',
-    actions: [{ act: 'settings', icon: 'settings', label: '设置' }],
+    eyebrow: 'WORLD', title: '世界',
   }) + '<div class="chips"></div><div class="grid"></div>';
   chipsEl = $('.chips', page);
   grid = $('.grid', page);
   bindScroll(page);
-  $('[data-act=settings]', page).addEventListener('click', openSettings);
 
   grid.addEventListener('click', e => {
     const card = e.target.closest('[data-id]');
@@ -44,7 +41,7 @@ function renderGrid({ animate = false } = {}) {
   if (!shown.length) {
     grid.innerHTML = filter
       ? emptyState(`还没有「${filter}」卡片`, '点右下角的 + 添加')
-      : emptyState('世界从这里开始', '添加人设、世界观设定、剧情大纲、势力等卡片');
+      : emptyState('世界从这里开始', '添加人设、世界设定、剧情大纲、势力等卡片');
   }
   for (const c of shown) {
     const card = h(`

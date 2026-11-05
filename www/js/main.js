@@ -8,11 +8,11 @@ import { settleRoot } from './editor.js';
 import * as novel from './views/novel.js';
 import * as world from './views/world.js';
 import * as notes from './views/notes.js';
-import { setReloadHandler } from './views/settings.js';
+import { setReloadHandler, openSettings } from './views/settings.js';
 
 const TABS = [
   { id: 'novel', label: '小说', icon: icons.book, view: novel },
-  { id: 'world', label: '世界观', icon: icons.globe, view: world },
+  { id: 'world', label: '世界', icon: icons.globe, view: world },
   { id: 'notes', label: notes.TAB.label, icon: icons[notes.TAB.icon], view: notes },
 ];
 
@@ -20,7 +20,17 @@ let current = 0;
 const pages = TABS.map(t => $(`.page[data-tab=${t.id}]`));
 const tabBtns = TABS.map(t => $(`.tab[data-tab=${t.id}]`));
 const indicator = $('.tab-indicator');
+const appbar = $('.appbar'), barTitle = $('.topbar-title', appbar);
 let fabEl;
+
+// 共用顶部栏跟着当前页面：显示这个页面的按钮（其余淡出）、滚动后的小标题和毛玻璃底
+function syncBar() {
+  const pg = pages[current];
+  $$('.appbar-acts > .acts').forEach(g => g.classList.toggle('on', g.dataset.tab === TABS[current].id));
+  const h1 = $('.hero h1', pg);
+  barTitle.textContent = h1 ? h1.textContent : TABS[current].label;
+  appbar.classList.toggle('scrolled', pg.classList.contains('scrolled'));
+}
 
 // 胶囊水平对准当前标签、垂直对准图标中心（按实际排版量，换字体也不会偏）
 function placeIndicator() {
@@ -45,6 +55,7 @@ function switchTab(i) {
   current = i;
   tabBtns.forEach((b, j) => b.classList.toggle('on', j === i));
   placeIndicator();
+  syncBar();
 
   anim(from, [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: `translateX(${-dir * 28}px)` }], { duration: 170, easing: 'ease-in', fill: 'forwards' })
     .then(() => { if (current !== pages.indexOf(from)) { from.classList.remove('active'); from.getAnimations().forEach(a => a.cancel()); } });
@@ -67,12 +78,30 @@ async function boot() {
     tabBtns[i].addEventListener('click', () => switchTab(i));
     t.view.mount(pages[i]);
   });
+  const settingsBtn = $('[data-act=settings]', appbar);
+  settingsBtn.innerHTML = icons.settings;
+  settingsBtn.addEventListener('click', openSettings);
+  window.addEventListener('pagescroll', syncBar);
+
+  // 卡片一按下就缩小（:active 在手机上要等一下确认不是在滑动才生效）；一滑动就恢复
+  let pressed = null;
+  const release = () => { if (pressed) { pressed.classList.remove('pressed'); pressed = null; } };
+  document.addEventListener('pointerdown', e => {
+    release();
+    const c = e.target.closest('.card');
+    if (c) { pressed = c; c.classList.add('pressed'); }
+  }, { passive: true });
+  document.addEventListener('pointerup', release, { passive: true });
+  document.addEventListener('pointercancel', release, { passive: true });
+  document.addEventListener('scroll', release, { capture: true, passive: true });
+
   fabEl = h(`<button class="fab" aria-label="新建">${icons.plus}</button>`);
   fabEl.addEventListener('click', () => TABS[current].view.fab());
   $('#root').appendChild(fabEl);
 
   pages[0].classList.add('active');
   tabBtns[0].classList.add('on');
+  syncBar();
   // 首次定位不要滑过去
   indicator.style.transition = 'none';
   placeIndicator();

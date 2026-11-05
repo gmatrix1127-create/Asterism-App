@@ -87,19 +87,20 @@ svg { display: block; }
   position: absolute; top: 0; left: 0; right: 0; bottom: 0;
   overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  padding-top: calc(52px + var(--sat));
   padding-bottom: calc(var(--tabbar-h) + var(--sab) + 96px);
   visibility: hidden;
 }
 .page.active { visibility: visible; }
 
 .topbar {
-  position: -webkit-sticky; position: sticky; top: 0; z-index: 5;
+  position: absolute; top: 0; left: 0; right: 0; z-index: 7;
   height: calc(52px + var(--sat)); padding: var(--sat) 8px 0 20px;
   display: flex; align-items: center; gap: 4px;
   background: var(--bg);
   transition: background-color .25s ease, box-shadow .25s ease;
 }
-.page.scrolled .topbar {
+.topbar.scrolled {
   background: var(--bar-bg);
   -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
   box-shadow: 0 1px 0 var(--line);
@@ -108,8 +109,11 @@ svg { display: block; }
 /* Agibot Display 的实际字形只有字号的 0.285 倍高，且偏下：用较大字号 + 上移 0.128em 让字形垂直居中 */
 .brand-word { font-family: var(--font-brand); font-size: 26px; line-height: 1; letter-spacing: .1em; position: relative; top: -.128em; color: var(--text); white-space: nowrap; transition: opacity .25s, transform .25s var(--ease); }
 .topbar-title { position: absolute; left: 20px; font-size: 16px; font-weight: 600; opacity: 0; transform: translateY(6px); transition: opacity .25s, transform .25s var(--ease); pointer-events: none; }
-.page.scrolled .topbar-title { opacity: 1; transform: none; }
-.page.scrolled .brand-word { opacity: 0; transform: translateY(-6px); }
+.topbar.scrolled .topbar-title { opacity: 1; transform: none; }
+.topbar.scrolled .brand-word { opacity: 0; transform: translateY(-6px); }
+.appbar-acts { display: grid; }
+.appbar-acts > .acts { grid-area: 1 / 1; justify-self: end; display: flex; gap: 4px; opacity: 0; pointer-events: none; transition: opacity .22s ease; }
+.appbar-acts > .acts.on { opacity: 1; pointer-events: auto; }
 
 .hero { padding: 6px 20px 14px; }
 .eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: .22em; color: var(--accent-ink); }
@@ -160,7 +164,7 @@ svg { display: block; }
   overflow: hidden;
 }
 .card.plain { background: var(--surface); border-color: var(--line); }
-.card:active { transform: scale(.985); }
+.card.pressed { transform: scale(.985); transition-duration: .08s; }
 .card-idx {
   flex: none; width: 54px; text-align: center; align-self: baseline;
   font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; color: rgb(var(--c));
@@ -195,7 +199,7 @@ svg { display: block; }
 .ncard-meta .num { font-size: 13px; }
 
 /* 空状态 */
-.empty { padding: 56px 32px 0; text-align: center; color: var(--text-3); font-size: 14px; }
+.empty { position: absolute; left: 0; right: 0; top: calc(var(--sat) + 52px + 200px); padding: 0 32px; text-align: center; color: var(--text-3); font-size: 14px; }
 .empty svg { width: 46px; height: 64px; margin: 0 auto 18px; color: var(--text-3); opacity: .55; }
 .empty b { display: block; color: var(--text-2); font-size: 15px; font-weight: 600; margin-bottom: 4px; }
 

@@ -2,14 +2,9 @@ import { h, esc, $ } from '../util.js';
 import { logo, icons } from '../icons.js';
 import { openSheet } from '../ui.js';
 
-// 每个一级页面顶部：Asterism 字样 + 滚动后出现的小标题 + 右侧按钮 + 大标题区
-export function pageHeader({ eyebrow, title, actions = [] }) {
-  const btns = actions.map(a => `<button class="icon-btn" data-act="${a.act}" aria-label="${esc(a.label)}">${icons[a.icon]}</button>`).join('');
+// 一级页面的大标题区（Asterism 字样和设置按钮在整个 app 共用的顶部栏里，切换页面时不动）
+export function pageHeader({ eyebrow, title }) {
   return `
-    <header class="topbar">
-      <div class="brand"><span class="brand-word">Asterism</span><span class="topbar-title">${esc(title)}</span></div>
-      ${btns}
-    </header>
     <div class="hero">
       <div class="eyebrow">${esc(eyebrow)}</div>
       <h1>${esc(title)}</h1>
@@ -17,11 +12,20 @@ export function pageHeader({ eyebrow, title, actions = [] }) {
     </div>`;
 }
 
+// 页面自己的按钮（比如章节颜色、标签管理）：放进共用顶部栏，切到这个页面时淡入
+export function pageActions(page, actions) {
+  const group = h(`<div class="acts" data-tab="${page.dataset.tab}">${actions.map(a =>
+    `<button class="icon-btn" data-act="${a.act}" aria-label="${esc(a.label)}">${icons[a.icon]}</button>`).join('')}</div>`);
+  $('.appbar-acts').appendChild(group);
+  return group;
+}
+
+// 页面滚动后，顶部栏换成小标题 + 毛玻璃底（由 main.js 根据当前页面同步）
 export function bindScroll(page) {
   let on = false;
   page.addEventListener('scroll', () => {
     const s = page.scrollTop > 48;
-    if (s !== on) { on = s; page.classList.toggle('scrolled', s); }
+    if (s !== on) { on = s; page.classList.toggle('scrolled', s); window.dispatchEvent(new Event('pagescroll')); }
   }, { passive: true });
 }
 
