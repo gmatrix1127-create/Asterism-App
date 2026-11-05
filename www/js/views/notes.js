@@ -6,7 +6,7 @@ import { pageHeader, pageActions, bindScroll, emptyState, formSheet } from './co
 import { openEditor } from '../editor.js';
 import { imageIds, stripImages, imagesAsMarks, deleteImages } from '../rich.js';
 
-// 随记：第一行文字就是标题，其余是正文；每篇可以选一个分类，卡片颜色跟着分类走；可以插图
+// 随记：可以写标题（不写就用正文第一行）；每篇可以选一个分类，卡片颜色跟着分类走；可以插图
 export const TAB = { label: '随记', icon: 'note' };
 
 const DEFAULT_CATS = ['生活', '工作', '个人', '密码'];
@@ -21,21 +21,22 @@ function ensureSettings() {
   if (s.noteView !== 'simple') s.noteView = 'detail';
 }
 
-// 标题取第一行有字的内容（图片那一行跳过）；预览里图片显示成［图片］
-function split(text) {
+// x.name：自己写的标题；x.title：正文第一行有字的内容（图片那一行跳过），没写标题时拿来当标题。
+// 写了标题，预览从正文开头算；没写，第一行已经当了标题，预览从第二行算。预览里图片显示成［图片］
+function split(text, named) {
   const lines = text.split('\n');
   const i = lines.findIndex(l => stripImages(l).replace(/[\s　]/g, ''));
   const title = i < 0 ? '' : lines[i].trim().slice(0, 60);
-  // 只有图片没有字时，标题已经显示［图片］，预览就不再重复
-  const body = i < 0 ? '' : imagesAsMarks(lines.filter((_, j) => j !== i).join('\n'));
+  // 只有图片没有字、又没写标题时，标题已经显示［图片］，预览就不再重复
+  const body = named ? imagesAsMarks(text) : i < 0 ? '' : imagesAsMarks(lines.filter((_, j) => j !== i).join('\n'));
   return {
     title,
     images: imageIds(text).length,
     preview: body.replace(/^[\s　]+/, '').replace(/\n[\s　]+/g, '\n').replace(/\s+$/, '').slice(0, 140),
   };
 }
-const titleOf = x => x.title || (x.images ? '［图片］' : '无标题');
-const isEmpty = x => !x.title && !x.words && !x.images;
+const titleOf = x => x.name || x.title || (x.images ? '［图片］' : '无标题');
+const isEmpty = x => !x.name && !x.title && !x.words && !x.images;
 
 // 创建日期，精确到日
 function fmtDay(ts) {
@@ -257,6 +258,8 @@ export function fab() {
   let cat = state.settings.memoCats.includes(state.settings.lastMemoCat) ? state.settings.lastMemoCat : '';
   const body = h(`
     <div>
+      <div class="field"><label>标题（可不填，不填就用正文第一行）</label>
+        <input class="input" name="name" maxlength="60" placeholder="无标题" enterkeyhint="done"></div>
       <div class="field"><label>分类（可不选）</label><div class="tg"></div></div>
       <button class="btn primary block" data-ok>${icons.pen}开始写</button>
     </div>`);
@@ -264,7 +267,8 @@ export function fab() {
   const s = openSheet({ title: '新随记', body });
   $('[data-ok]', body).addEventListener('click', () => {
     const now = Date.now();
-    const x = { id: uid(), title: '', preview: '', words: 0, images: 0, cat, createdAt: now, updatedAt: now };
+    const name = $('[name=name]', body).value.trim();
+    const x = { id: uid(), name, title: '', preview: '', words: 0, images: 0, cat, createdAt: now, updatedAt: now };
     state.notes.push(x);
     state.settings.lastMemoCat = cat;
     persist('notes'); persist('settings');
@@ -276,6 +280,7 @@ export function fab() {
 
 // ---------- 菜单 / 修改 ----------
 const menuItems = x => [
+  { label: '修改标题', icon: 'edit', value: 'name' },
   { label: '更换分类', icon: 'tag', value: 'cat', hint: x.cat || '' },
   { label: '修改创建日期', icon: 'calendar', value: 'date', hint: fmtDay(x.createdAt) },
   { label: '删除随记', icon: 'trash', value: 'del', danger: true },
@@ -284,10 +289,30 @@ const menuItems = x => [
 async function noteMenu(id) {
   const x = state.notes.find(n => n.id === id);
   if (!x) return;
-  const act = await actionSheet(titleOf(x), menuItems(x));
+  const act = await actionSheet('', menuItems(x));
+  if (act === 'name') changeName(id);
   if (act === 'cat') changeCat(id);
   if (act === 'date') changeDate(id);
   if (act === 'del') removeNote(id);
+}
+
+// 改标题：写了标题，卡片预览改从正文开头算；清空则回到用正文第一行当标题
+function changeName(id, { after } = {}) {
+  const x = state.notes.find(n => n.id === id);
+  if (!x) return;
+  formSheet({
+    title: '修改标题',
+    fields: [{ key: 'name', label: '标题（清空就用正文第一行）', value: x.name || '', placeholder: x.title || '无标题', maxlength: 60 }],
+    onSubmit: v => {
+      x.name = v.name;
+      getText(x.id).then(t => {
+        Object.assign(x, split(t, !!x.name));
+        persist('notes');
+        render();
+        after && after(x);
+      });
+    },
+  });
 }
 
 function changeCat(id, { after } = {}) {
@@ -335,16 +360,18 @@ async function removeNote(id, { skipAnim = false } = {}) {
 // ---------- 编辑页钩子（编辑页是小说和随记共用的） ----------
 export const editorHooks = {
   rich: true,                       // 用可插图的编辑区
-  title: x => x.title || (x.images ? '［图片］' : '新随记'),
+  title: x => x.name || x.title || (x.images ? '［图片］' : '新随记'),
+  onTitle: (id, ctx) => changeName(id, ctx),   // 点编辑页顶部的标题
   titleClass: '',
   badge: x => x.cat || '分类',       // 标题右边：点了改分类
   onBadge: (id, ctx) => changeCat(id, ctx),
   countText: stripImages,           // 字数不算图片
-  onSave: (x, text) => { Object.assign(x, split(text)); },
+  onSave: (x, text) => { Object.assign(x, split(text, !!x.name)); },
   placeholder: '第一行是标题',
   autoFocus: x => !x.words,
   async menu(x, ctx) {
-    const v = await actionSheet(titleOf(x), menuItems(x));
+    const v = await actionSheet('', menuItems(x));
+    if (v === 'name') changeName(x.id, ctx);
     if (v === 'cat') changeCat(x.id, ctx);
     if (v === 'date') changeDate(x.id, ctx);
     return v === 'del' && await removeNote(x.id, { skipAnim: true });

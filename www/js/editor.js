@@ -235,7 +235,10 @@ export async function openEditor({ kind, id, onClose }) {
   scr.querySelector('.ed-head').addEventListener('click', async e => {
     const act = e.target.closest('[data-act]');
     if (!act) {
-      if (!isNote && e.target === titleEl) editInfo(id, refreshTitle);
+      if (e.target === titleEl) {
+        if (!isNote) editInfo(id, refreshTitle);
+        else if (noteHooks.onTitle) noteHooks.onTitle(id, { editText, after: refreshTitle });
+      }
       return;
     }
     const a = act.dataset.act;
