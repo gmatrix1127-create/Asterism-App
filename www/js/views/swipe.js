@@ -186,9 +186,9 @@ export function swipeList(list, { onDelete, batch = [], noun = '篇' }) {
     document.addEventListener('pointerdown', outside, true);
     sync();
   }
-  // 点列表和操作条以外的地方（弹层除外）就退出多选
+  // 点列表（包括卡片之间的空隙）和操作条以外的地方（弹层除外）就退出多选
   function outside(e) {
-    if (e.target.closest('.swipe-row, .sel-bar, .layer')) return;
+    if (list.contains(e.target) || e.target.closest('.sel-bar, .layer')) return;
     exitSelect();
   }
   function exitSelect() {
@@ -196,6 +196,9 @@ export function swipeList(list, { onDelete, batch = [], noun = '篇' }) {
     selecting = false;
     sel.clear();
     list.classList.remove('selecting');
+    list.classList.add('unselecting');
+    clearTimeout(list._unsel);
+    list._unsel = setTimeout(() => list.classList.remove('unselecting'), 360);
     sync();
     document.removeEventListener('pointerdown', outside, true);
     if (unBack) { unBack(); unBack = null; }
@@ -205,16 +208,29 @@ export function swipeList(list, { onDelete, batch = [], noun = '篇' }) {
     if (fab) fab.classList.remove('hidden');
   }
 
-  // 在勾选圈那一列上下滑：滑过的卡片都设成和第一张一样（勾上或取消）
+  // 在勾选圈那一列上下滑：从起点到手指当前所在的卡片都设成和第一张一样（勾上或取消）；
+  // 往回滑时，退出范围的卡片恢复成按下之前的样子，一次滑动可以来回调
   function startPaint(e, row) {
+    const all = rowsAll(), start = all.indexOf(row), before = new Set(sel);
     const on = !sel.has(row.dataset.id), pid = e.pointerId;
-    toggle(row, on);
+    let last = start;
+    const apply = end => {
+      const lo = Math.min(start, end), hi = Math.max(start, end);
+      all.forEach((r, i) => {
+        const id = r.dataset.id;
+        const want = i >= lo && i <= hi ? on : before.has(id);
+        if (want) sel.add(id); else sel.delete(id);
+      });
+      sync();
+    };
+    apply(start);
     suppressUntil = Date.now() + 600;
     const move = ev => {
       if (ev.pointerId !== pid) return;
       const el = document.elementFromPoint(ev.clientX, ev.clientY);
       const r = el && el.closest('.swipe-row');
-      if (r && list.contains(r) && sel.has(r.dataset.id) !== on) toggle(r, on);
+      const i = r ? all.indexOf(r) : -1;
+      if (i >= 0 && i !== last) { last = i; apply(i); }
     };
     const up = ev => {
       if (ev.pointerId !== pid) return;

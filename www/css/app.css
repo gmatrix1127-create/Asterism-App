@@ -561,7 +561,7 @@ body.img-dragging { -webkit-user-select: none; user-select: none; }
   position: absolute; top: 0; bottom: 0; right: 0; width: 124px; padding: 0 8px 0 14px;
   display: flex; align-items: center; justify-content: space-between;
 }
-.swipe-row.leaving .swipe-acts, .list.selecting .swipe-acts { visibility: hidden; }
+.swipe-row.leaving .swipe-acts, .list.selecting .swipe-acts, .list.unselecting .swipe-acts { visibility: hidden; }
 .swipe-acts button {
   width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; flex: none;
   background: var(--surface-2); color: var(--text-2); transition: transform .15s;
