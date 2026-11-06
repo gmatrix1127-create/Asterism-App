@@ -545,3 +545,56 @@ body.img-dragging { -webkit-user-select: none; user-select: none; }
   opacity: 0; transition: opacity .2s ease;
 }
 .img-layer.peek .img-pct { opacity: 1; }
+
+/* 图片调大小：宽度平滑过渡 */
+.rt-img.sizing { transition: width .22s cubic-bezier(.2, .8, .2, 1); }
+
+/* 确认框里的勾选项 */
+.dlg-check { display: flex; align-items: center; gap: 8px; margin: -4px 0 16px; font-size: 13.5px; color: var(--text-2); }
+.dlg-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+
+/* ---------- 随记快捷操作：左滑、多选 ---------- */
+.swipe-row { position: relative; touch-action: pan-y; }
+.swipe-row > .card { z-index: 1; transition: transform .3s var(--ease), margin-right .3s var(--ease), box-shadow .2s; }
+.swipe-row > .card.pressed { transition-duration: .08s; }
+.swipe-acts {
+  position: absolute; top: 0; bottom: 0; right: 0; width: 136px; padding-left: 12px;
+  display: flex; gap: 8px;
+}
+.swipe-row.leaving .swipe-acts { visibility: hidden; }
+.swipe-acts button {
+  flex: 1; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--text-2); transition: transform .15s;
+}
+.swipe-acts button:active { transform: scale(.94); }
+.swipe-acts button.danger { background: var(--danger); color: #fff; }
+.swipe-acts svg { width: 20px; height: 20px; }
+.sel-box {
+  position: absolute; top: 0; bottom: 0; right: 0; width: 44px; display: grid; place-items: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.sel-box i {
+  width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--text-3); display: grid; place-items: center;
+  color: #fff; transform: scale(.6); transition: transform .25s cubic-bezier(.3, 1.4, .5, 1), background-color .15s, border-color .15s;
+}
+.sel-box svg { width: 14px; height: 14px; opacity: 0; transition: opacity .12s; }
+.list.selecting .sel-box { opacity: 1; pointer-events: auto; touch-action: none; }
+.list.selecting .sel-box i { transform: none; }
+.list.selecting .swipe-row > .card { margin-right: 44px; }
+.swipe-row.checked .sel-box i { background: var(--accent); border-color: var(--accent); }
+.swipe-row.checked .sel-box svg { opacity: 1; }
+.sel-bar {
+  position: absolute; left: 16px; right: 16px; bottom: calc(var(--tabbar-h) + var(--sab) + 14px); z-index: 9;
+  display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 18px; border-radius: 18px;
+  background: var(--surface); box-shadow: var(--shadow-2); border: 1px solid var(--line);
+}
+.sel-bar .grow { flex: 1; }
+.sel-count { font-size: 14.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sel-bar button {
+  height: 40px; padding: 0 14px; border-radius: 12px; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 600; background: var(--surface-2); transition: opacity .2s, transform .15s;
+}
+.sel-bar button:active { transform: scale(.95); }
+.sel-bar button:disabled { opacity: .4; }
+.sel-bar button.danger { background: var(--danger); color: #fff; }
+.sel-bar svg { width: 18px; height: 18px; }

@@ -3,6 +3,7 @@ import { h, esc, $, $$, uid, rgb, fmtNum } from '../util.js';
 import { icons } from '../icons.js';
 import { openSheet, actionSheet, confirmDialog, toast, flip, stagger, collapse, onLongPress, consumeLongPress, swatches, datePicker } from '../ui.js';
 import { pageHeader, pageActions, bindScroll, emptyState, formSheet } from './common.js';
+import { swipeRow, swipeList } from './swipe.js';
 import { openEditor } from '../editor.js';
 import { imageIds, stripImages, imagesAsMarks, deleteImages } from '../rich.js';
 
@@ -73,11 +74,23 @@ export function mount(el) {
   $('[data-act=view]', acts).addEventListener('click', toggleView);
 
   list.addEventListener('click', e => {
-    const card = e.target.closest('[data-id]');
-    if (!card || consumeLongPress(card)) return;
-    open(card.dataset.id);
+    const row = e.target.closest('[data-id]');
+    if (!row || consumeLongPress($('.card', row) || row)) return;
+    open(row.dataset.id);
   });
+  // 左滑：多选 / 删除
+  swipeList(list, { onDelete: deleteNotes,
+    batch: [{ key: 'cat', icon: 'tag', label: '分类', run: batchCat }] });
   render();
+}
+
+// 快捷删除（已经确认过或不再询问）：直接删数据
+async function deleteNotes(ids) {
+  for (const id of ids) { deleteImages(imageIds(await getText(id))); delText(id); }
+  state.notes = state.notes.filter(n => !ids.includes(n.id));
+  persist('notes');
+  render();
+  toast(ids.length > 1 ? `已删除 ${ids.length} 篇` : '已删除');
 }
 
 const viewIcon = () => state.settings.noteView === 'simple' ? 'rows' : 'cards';
@@ -124,7 +137,7 @@ function renderList({ animate = false } = {}) {
         <div class="ncard-meta"><span>创建于 ${fmtDay(x.createdAt)}</span><span class="dot-sep"></span><span><span class="num">${fmtNum(x.words)}</span> 字</span></div>`}
       </div>`);
     onLongPress(card, () => noteMenu(x.id));
-    list.appendChild(card);
+    list.appendChild(swipeRow(card, x.id));
   }
   if (animate) stagger(list);
 }
@@ -313,6 +326,20 @@ function changeName(id, { after } = {}) {
       });
     },
   });
+}
+
+// 多选后批量改分类
+function batchCat(ids, done) {
+  const grid = catGrid('', v => {
+    for (const x of state.notes) if (ids.includes(x.id)) x.cat = v;
+    if (v) state.settings.lastMemoCat = v;
+    persist('notes'); persist('settings');
+    done();
+    flip(list, () => render());
+    toast(v ? `已改为「${v}」` : '已取消分类');
+    setTimeout(() => s.close(), 160);
+  });
+  const s = openSheet({ title: `更换 ${ids.length} 篇的分类`, body: grid });
 }
 
 function changeCat(id, { after } = {}) {

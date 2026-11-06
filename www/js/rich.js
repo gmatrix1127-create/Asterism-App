@@ -392,7 +392,7 @@ export function createRich({ text, prefs, indent, onChange, beforeOp = () => {} 
       if (sx == null) return;
       const dx = e.clientX - sx;
       if (!moved && Math.abs(dx) < 6) return;
-      if (!moved) { beforeOp(); layer.classList.add('peek'); }
+      if (!moved) { beforeOp(); layer.classList.add('peek'); f.classList.add('sizing'); }
       moved = true;
       const w = Math.round(clamp(sw + dx / size.offsetWidth * (MAX_W - MIN_W), MIN_W, MAX_W));
       if (w === +f.dataset.w) return;
@@ -403,7 +403,9 @@ export function createRich({ text, prefs, indent, onChange, beforeOp = () => {} 
       if (sx == null) return;
       sx = null; size.classList.remove('active');
       if (moved) {
-        placeLift(); layer.classList.remove('peek'); changed(true);
+        // 等宽度过渡走完再对齐浮起的那张图
+        setTimeout(() => { f.classList.remove('sizing'); placeLift(); layer.classList.remove('peek'); }, 240);
+        changed(true);
         prefs.imageWidth = +f.dataset.w; persist('settings');
       } else toast('左右拖动调节大小');
     };

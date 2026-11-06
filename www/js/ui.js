@@ -102,7 +102,7 @@ export function actionSheet(title, items) {
 }
 
 // ---------- 确认框 ----------
-export function confirmDialog({ title, message = '', ok = '确定', danger = false }) {
+export function confirmDialog({ title, message = '', ok = '确定', danger = false, check = null }) {
   return new Promise(resolve => {
     const layer = h(`
       <div class="layer">
@@ -110,6 +110,7 @@ export function confirmDialog({ title, message = '', ok = '确定', danger = fal
         <div class="dialog" role="alertdialog">
           <h3>${esc(title)}</h3>
           ${message ? `<p>${esc(message)}</p>` : ''}
+          ${check ? `<label class="dlg-check"><input type="checkbox"><span>${esc(check.label)}</span></label>` : ''}
           <div class="btn-row">
             <button class="btn" data-v="0">取消</button>
             <button class="btn ${danger ? 'danger' : 'primary'}" data-v="1">${esc(ok)}</button>
@@ -125,6 +126,7 @@ export function confirmDialog({ title, message = '', ok = '确定', danger = fal
     function close(v) {
       if (done) return;
       done = true; unBack();
+      if (check) check.value = !!$('.dlg-check input', layer).checked;
       anim(backdrop, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' });
       anim(dialog, [{ opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }, { opacity: 0, transform: 'translate(-50%, -50%) scale(.95)' }], { duration: 160, fill: 'forwards' })
         .then(() => layer.remove());
