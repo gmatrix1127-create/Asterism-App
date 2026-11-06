@@ -7,7 +7,7 @@ import { h, $, $$ } from '../util.js';
 import { icons } from '../icons.js';
 import { anim, EASE, pushBack, confirmDialog, collapse } from '../ui.js';
 
-const ACT_W = 136; // 左滑露出的按钮区宽度
+const ACT_W = 124; // 左滑露出的按钮区宽度（两个圆形按钮）
 
 // 把卡片包一层：后面藏着操作按钮，右边是多选时的勾选圈。data-id 挪到外层，列表动画按行走
 export function swipeRow(card, id) {
@@ -15,8 +15,8 @@ export function swipeRow(card, id) {
   const row = h(`
     <div class="swipe-row" data-id="${id}">
       <div class="swipe-acts">
-        <button data-sw="multi">${icons.check}<span>多选</span></button>
-        <button data-sw="del" class="danger">${icons.trash}<span>删除</span></button>
+        <button data-sw="multi" aria-label="多选">${icons.check}</button>
+        <button data-sw="del" class="danger" aria-label="删除">${icons.trash}</button>
       </div>
       <span class="sel-box"><i>${icons.check}</i></span>
     </div>`);
@@ -26,7 +26,7 @@ export function swipeRow(card, id) {
 
 // onDelete(ids)：真正删数据（不再确认）；batch：多选时额外的批量操作 [{ key, icon, label, run(ids, done) }]
 export function swipeList(list, { onDelete, batch = [], noun = '篇' }) {
-  let open = null, selecting = false, sel = new Set(), bar = null, unBack = null, suppress = false;
+  let open = null, selecting = false, sel = new Set(), bar = null, unBack = null, suppressUntil = 0;
   const cardOf = row => $('.card', row);
 
   function setX(row, x, animate = true) {
@@ -55,15 +55,18 @@ export function swipeList(list, { onDelete, batch = [], noun = '篇' }) {
     if (!row || e.target.closest('.swipe-acts')) return;
     const c = cardOf(row);
     const sx = e.clientX, sy = e.clientY, base = row === open ? -ACT_W : 0, pid = e.pointerId;
-    let mode = null, x = base;
+    let mode = null, x = base, lastX = sx, lastT = e.timeStamp, vx = 0;
     const move = ev => {
       if (ev.pointerId !== pid) return;
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
       if (!mode) {
-        if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { mode = 'h'; c.classList.remove('pressed'); }
+        if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy)) { mode = 'h'; c.classList.remove('pressed'); }
         else if (Math.abs(dy) > 8) { done(); return; }
         else return;
       }
+      const dt = ev.timeStamp - lastT;
+      if (dt > 0) vx = (ev.clientX - lastX) / dt;
+      lastX = ev.clientX; lastT = ev.timeStamp;
       x = base + dx;
       if (x > 0) x = 0;
       if (x < -ACT_W) x = -ACT_W + (x + ACT_W) * .3; // 拉过头有阻力
@@ -73,8 +76,10 @@ export function swipeList(list, { onDelete, batch = [], noun = '篇' }) {
       if (ev.pointerId !== pid) return;
       done();
       if (mode !== 'h') return;
-      suppress = true; // 这次松手不算点击
-      if (x < -ACT_W / 2) openRow(row); else close(row);
+      suppressUntil = Date.now() + 350; // 这次松手不算点击
+      // 拉开 30px 或轻轻往左一甩就展开；已经展开时往右拉 30px 或往右甩就收起
+      const opening = base === 0 ? (x < -30 || vx < -.3) : !(x > -ACT_W + 30 || vx > .3);
+      if (opening) openRow(row); else close(row);
     };
     const done = () => {
       window.removeEventListener('pointermove', move);
@@ -90,7 +95,7 @@ export function swipeList(list, { onDelete, batch = [], noun = '篇' }) {
   list.addEventListener('click', e => {
     const row = e.target.closest('.swipe-row');
     const stop = () => { e.stopPropagation(); e.preventDefault(); };
-    if (suppress) { suppress = false; stop(); return; }
+    if (Date.now() < suppressUntil) { suppressUntil = 0; stop(); return; }
     if (!row) return;
     const sw = e.target.closest('[data-sw]');
     if (sw) {
@@ -204,7 +209,7 @@ export function swipeList(list, { onDelete, batch = [], noun = '篇' }) {
   function startPaint(e, row) {
     const on = !sel.has(row.dataset.id), pid = e.pointerId;
     toggle(row, on);
-    suppress = true;
+    suppressUntil = Date.now() + 600;
     const move = ev => {
       if (ev.pointerId !== pid) return;
       const el = document.elementFromPoint(ev.clientX, ev.clientY);

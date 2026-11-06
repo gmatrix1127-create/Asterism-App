@@ -558,13 +558,13 @@ body.img-dragging { -webkit-user-select: none; user-select: none; }
 .swipe-row > .card { z-index: 1; transition: transform .3s var(--ease), margin-right .3s var(--ease), box-shadow .2s; }
 .swipe-row > .card.pressed { transition-duration: .08s; }
 .swipe-acts {
-  position: absolute; top: 0; bottom: 0; right: 0; width: 136px; padding-left: 12px;
-  display: flex; gap: 8px;
+  position: absolute; top: 0; bottom: 0; right: 0; width: 124px; padding: 0 8px 0 14px;
+  display: flex; align-items: center; justify-content: space-between;
 }
-.swipe-row.leaving .swipe-acts { visibility: hidden; }
+.swipe-row.leaving .swipe-acts, .list.selecting .swipe-acts { visibility: hidden; }
 .swipe-acts button {
-  flex: 1; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--text-2); transition: transform .15s;
+  width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: var(--surface-2); color: var(--text-2); transition: transform .15s;
 }
 .swipe-acts button:active { transform: scale(.94); }
 .swipe-acts button.danger { background: var(--danger); color: #fff; }
